@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRX Life Retail Nutrition Pvt Ltd - Sample Invoice Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col">
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-6 transform transition-all border border-slate-100">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-100 text-2xl">
+                    <i class="fa-solid fa-capsules"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900 tracking-tight">GRX Life Retail Nutrition</h2>
+                <p class="text-xs text-slate-500">Sample Invoice Portal Login</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Username / Login ID</label>
+                    <input type="text" id="loginUsername" required placeholder="e.g. Saquib-GRX" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="loginPassword" required placeholder="Enter password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium">
+                </div>
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-100 transition-all">
+                    Sign In to Portal <i class="fa-solid fa-arrow-right ml-1.5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP HEADER -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div id="headerLogoBg" class="bg-indigo-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100 transition-colors">
+                    <i class="fa-solid fa-capsules text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight">GRX Life Retail Nutrition Pvt Ltd</h1>
+                    <p id="headerSubtitle" class="text-[11px] text-slate-500">Sample Invoice Management System</p>
+                </div>
+            </div>
+
+            <!-- Logged-in User Profile & Logout -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-3 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <div id="sessionAvatar" class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">A</div>
+                    <div class="text-left">
+                        <p id="sessionNameDisplay" class="text-xs font-bold text-slate-900 leading-tight">User</p>
+                        <p id="sessionRoleDisplay" class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">MR Account</p>
+                    </div>
+                </div>
+
+                <button onclick="logout()" class="px-3 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-medium text-xs rounded-xl transition-all border border-slate-200 flex items-center space-x-1" title="Sign Out">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Role Banner Indicator -->
+        <div id="roleBanner" class="p-4 rounded-2xl border flex items-center justify-between bg-indigo-50 border-indigo-100 text-indigo-900 transition-all">
+            <div class="flex items-center space-x-3">
+                <div id="roleIconBg" class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                    <i id="roleBannerIcon" class="fa-solid fa-user-tie"></i>
+                </div>
+                <div>
+                    <h3 id="roleBannerTitle" class="font-bold text-sm">Medical Representative Dashboard</h3>
+                    <p id="roleBannerDesc" class="text-xs opacity-80">You are viewing your private sample requests. Other MR submissions are strictly isolated.</p>
+                </div>
+            </div>
+            <div id="headerActionContainer">
+                <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">
+                    <i class="fa-solid fa-plus mr-2"></i> New Sample Request
+                </button>
+            </div>
+        </div>
+
+        <!-- Analytics Dashboard Summary Cards -->
+        <section id="metricsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Dynamic Cards Injected via JS -->
+        </section>
+
+        <!-- Main Invoices List Table Card -->
+        <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 id="tableSectionTitle" class="text-lg font-bold text-slate-900">My Sample Requests</h2>
+                    <p id="tableSectionDesc" class="text-sm text-slate-500">Submissions created under your account.</p>
+                </div>
+                <!-- Filters & Search -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-search text-xs"></i>
+                        </span>
+                        <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search Sample Inv No, client..." class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white w-full sm:w-72 transition-all">
+                    </div>
+                    <!-- Status Filter Dropdown -->
+                    <div>
+                        <select id="statusFilter" onchange="renderApp()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Pending Approval">Pending Approval</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/70 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3.5 px-6">Sample Inv No</th>
+                            <th class="py-3.5 px-6">MR Name</th>
+                            <th class="py-3.5 px-6">Product Name</th>
+                            <th class="py-3.5 px-6">Quantity</th>
+                            <th class="py-3.5 px-6">Client / Doctor</th>
+                            <th class="py-3.5 px-6">Date</th>
+                            <th class="py-3.5 px-6">Status</th>
+                            <th class="py-3.5 px-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoiceTableBody" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Dynamic rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-16 text-center">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl mb-3">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-base font-semibold text-slate-800">No sample invoice requests found</h3>
+                <p class="text-sm text-slate-500 mt-1">Create a new request to get started.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MR Request Modal -->
+    <div id="invoiceModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-900">New Sample Invoice Request</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="invoiceForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editIndex">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Sample Inv No</label>
+                    <input type="text" id="formInvoiceId" required readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none font-mono text-slate-600 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">MR Login ID (Representative)</label>
+                    <input type="text" id="formMrName" required readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-600 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Product Name</label>
+                    <input type="text" id="formProductName" required placeholder="e.g. Whey Protein Isolate" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Quantity</label>
+                    <input type="number" min="1" id="formQuantity" required placeholder="e.g. 5" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Client / Doctor Name</label>
+                    <input type="text" id="formClientName" required placeholder="e.g. Dr. Robert Clinic" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Issue Date</label>
+                    <input type="date" id="formIssueDate" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                </div>
+                <div class="pt-4 flex items-center justify-end space-x-3 border-t border-slate-200">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl transition-all">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Review Modal -->
+    <div id="approvalModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 id="approvalModalTitle" class="text-lg font-bold text-slate-900">Review Sample Request</h3>
+                <button onclick="closeApprovalModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="approvalIndex">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Sample Inv No</p>
+                    <p id="appModalId" class="font-mono font-bold text-slate-900 text-base"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">MR, Product & Qty</p>
+                    <p id="appModalDetails" class="text-sm text-slate-800 font-medium"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Admin Notes / Rejection Reason</label>
+                    <textarea id="appModalNotes" rows="3" placeholder="Optional notes for approval or reason for rejection..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"></textarea>
+                </div>
+                <div class="flex items-center justify-end space-x-3 pt-2">
+                    <button type="button" onclick="processApproval('Rejected')" class="flex-1 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-sm rounded-xl border border-rose-200 transition-all">
+                        <i class="fa-solid fa-xmark mr-1"></i> Reject
+                    </button>
+                    <button type="button" onclick="processApproval('Approved')" class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-check mr-1"></i> Approve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Exact Credential Database mapping user IDs to passwords
+        const validCredentials = {
+            "Admin": "GRX-admin",
+            "Saquib-GRX": "GRX-123456",
+            "Sayed-GRX": "GRX-123456",
+            "Aditya-GRX": "GRX-123456",
+            "Ashu-GRX": "GRX-123456",
+            "Adil-GRX": "GRX-123456",
+            "Sajjad-GRX": "GRX-123456",
+            "Raj Singh-GRX": "GRX-123456",
+            "Sourabh-GRX": "GRX-123456",
+            "Qasim-GRX": "GRX-123456"
+        };
+
+        let currentUser = null;
+
+        // Fresh Start: Empty array so all counters start at 0
+        let invoices = [];
+
+        function loadFromLocalStorage() {
+            const savedInvoices = localStorage.getItem('grx_nutrition_invoices_v4');
+            if (savedInvoices) {
+                try { invoices = JSON.parse(savedInvoices); } catch(e) { console.error(e); }
+            }
+            const savedUser = localStorage.getItem('grx_nutrition_session_v4');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    initAppSession();
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('grx_nutrition_invoices_v4', JSON.stringify(invoices));
+        }
+
+        window.onload = function() {
+            loadFromLocalStorage();
+        };
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('loginUsername').value.trim();
+            const passwordInput = document.getElementById('loginPassword').value.trim();
+
+            if (!validCredentials[usernameInput] || validCredentials[usernameInput] !== passwordInput) {
+                alert('Invalid Login ID or Password! Please check your credentials.');
+                return;
+            }
+
+            const role = (usernameInput === 'Admin') ? 'Admin' : 'MR';
+
+            currentUser = {
+                name: usernameInput,
+                role: role
+            };
+
+            localStorage.setItem('grx_nutrition_session_v4', JSON.stringify(currentUser));
+            document.getElementById('loginScreen').classList.add('hidden');
+            initAppSession();
+        }
+
+        function logout() {
+            localStorage.removeItem('grx_nutrition_session_v4');
+            currentUser = null;
+            location.reload();
+        }
+
+        function initAppSession() {
+            const sessionNameDisplay = document.getElementById('sessionNameDisplay');
+            const sessionRoleDisplay = document.getElementById('sessionRoleDisplay');
+            const sessionAvatar = document.getElementById('sessionAvatar');
+            const headerLogoBg = document.getElementById('headerLogoBg');
+            const headerSubtitle = document.getElementById('headerSubtitle');
+            const roleBanner = document.getElementById('roleBanner');
+            const roleIconBg = document.getElementById('roleIconBg');
+            const roleBannerIcon = document.getElementById('roleBannerIcon');
+            const roleBannerTitle = document.getElementById('roleBannerTitle');
+            const roleBannerDesc = document.getElementById('roleBannerDesc');
+            const headerActionContainer = document.getElementById('headerActionContainer');
+
+            sessionNameDisplay.textContent = currentUser.name;
+            sessionAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+
+            if (currentUser.role === 'MR') {
+                sessionRoleDisplay.textContent = 'MR Account';
+                sessionRoleDisplay.className = 'text-[10px] text-indigo-600 font-semibold uppercase tracking-wider';
+                headerLogoBg.className = 'bg-indigo-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100';
+                headerSubtitle.textContent = 'GRX Life Retail Nutrition Pvt Ltd';
+
+                roleBanner.className = 'p-4 rounded-2xl border flex items-center justify-between bg-indigo-50 border-indigo-100 text-indigo-900';
+                roleIconBg.className = 'w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center';
+                roleBannerIcon.className = 'fa-solid fa-user-tie';
+                roleBannerTitle.textContent = `Welcome, ${currentUser.name} (MR Dashboard)`;
+                roleBannerDesc.textContent = 'You are viewing your private sample requests. Other MR submissions are strictly isolated.';
+                
+                headerActionContainer.innerHTML = `
+                    <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-plus mr-2"></i> New Sample Request
+                    </button>
+                `;
+            } else {
+                sessionRoleDisplay.textContent = 'Administrator';
+                sessionRoleDisplay.className = 'text-[10px] text-purple-600 font-semibold uppercase tracking-wider';
+                headerLogoBg.className = 'bg-purple-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-purple-100';
+                headerSubtitle.textContent = 'GRX Life Retail Nutrition Pvt Ltd';
+
+                roleBanner.className = 'p-4 rounded-2xl border flex items-center justify-between bg-purple-50 border-purple-100 text-purple-900';
+                roleIconBg.className = 'w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center';
+                roleBannerIcon.className = 'fa-solid fa-shield-halved';
+                roleBannerTitle.textContent = 'Administrator Review Hub';
+                roleBannerDesc.textContent = 'Reviewing all incoming sample requests submitted across all active Medical Representatives.';
+                
+                headerActionContainer.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-2 bg-purple-100 text-purple-800 font-semibold text-xs rounded-xl">
+                        <i class="fa-solid fa-lock-open mr-1.5"></i> All MR Records Visible
+                    </span>
+                `;
+            }
+
+            renderApp();
+        }
+
+        function filterByCard(statusVal) {
+            document.getElementById('statusFilter').value = statusVal;
+            renderApp();
+        }
+
+        function renderApp() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            let userScopedInvoices = invoices;
+            if (currentUser && currentUser.role === 'MR') {
+                userScopedInvoices = invoices.filter(inv => inv.mrName.toLowerCase() === currentUser.name.toLowerCase());
+            }
+
+            const filtered = userScopedInvoices.filter(inv => {
+                const matchesQuery = inv.id.toLowerCase().includes(query) || inv.client.toLowerCase().includes(query) || inv.mrName.toLowerCase().includes(query) || (inv.productName && inv.productName.toLowerCase().includes(query));
+                const matchesStatus = (statusFilter === 'ALL' || inv.status === statusFilter);
+                return matchesQuery && matchesStatus;
+            });
+
+            renderDashboardMetrics(userScopedInvoices);
+            renderTable(filtered);
+        }
+
+        function renderDashboardMetrics(scopedData) {
+            const container = document.getElementById('metricsContainer');
+            const totalCount = scopedData.length;
+            const pendingCount = scopedData.filter(i => i.status === 'Pending Approval').length;
+            const approvedCount = scopedData.filter(i => i.status === 'Approved').length;
+            const rejectedCount = scopedData.filter(i => i.status === 'Rejected').length;
+
+            if (currentUser && currentUser.role === 'MR') {
+                container.innerHTML = `
+                    <div onclick="filterByCard('ALL')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 group-hover:text-indigo-600">My Total Requests</p>
+                            <h3 class="text-2xl font-bold text-slate-900 mt-1">${totalCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-receipt"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 group-hover:text-amber-600">Pending Approval</p>
+                            <h3 class="text-2xl font-bold text-amber-600 mt-1">${pendingCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Approved')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 group-hover:text-emerald-600">Approved Samples</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">${approvedCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Rejected')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 group-hover:text-rose-600">Declined Requests</p>
+                            <h3 class="text-2xl font-bold text-rose-600 mt-1">${rejectedCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-ban"></i></div>
+                    </div>
+                `;
+                document.getElementById('tableSectionTitle').textContent = 'My Sample Requests';
+                document.getElementById('tableSectionDesc').textContent = 'Showing only your personal requests. Other MR records are isolated.';
+            } else {
+                container.innerHTML = `
+                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-6 rounded-2xl border border-purple-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-purple-50/40 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-purple-900 font-semibold">Pending Review</p>
+                            <h3 class="text-2xl font-bold text-purple-600 mt-1">${pendingCount} Requests</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg"><i class="fa-solid fa-triangle-exclamation animate-pulse"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Approved')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500">Total Approved</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">${approvedCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Rejected')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500">Total Rejected</p>
+                            <h3 class="text-2xl font-bold text-rose-600 mt-1">${rejectedCount}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-ban"></i></div>
+                    </div>
+                    <div onclick="filterByCard('ALL')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-slate-400 transition-all group">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500">All MR Submissions</p>
+                            <h3 class="text-2xl font-bold text-slate-900 mt-1">${totalCount} Total</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-lg"><i class="fa-solid fa-users"></i></div>
+                    </div>
+                `;
+                document.getElementById('tableSectionTitle').textContent = 'All MR Submissions Queue';
+                document.getElementById('tableSectionDesc').textContent = 'Reviewing requests across all active Medical Representatives.';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('invoiceTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            data.forEach((inv) => {
+                const originalIndex = invoices.findIndex(item => item === inv);
+
+                let badgeClass = '';
+                let dotClass = '';
+                if (inv.status === 'Approved') {
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200/60';
+                    dotClass = 'bg-emerald-500';
+                } else if (inv.status === 'Pending Approval') {
+                    badgeClass = 'bg-amber-50 text-amber-700 border border-amber-200/60';
+                    dotClass = 'bg-amber-500 animate-pulse';
+                } else if (inv.status === 'Rejected') {
+                    badgeClass = 'bg-rose-50 text-rose-700 border border-rose-200/60';
+                    dotClass = 'bg-rose-500';
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/50 transition-colors';
+                
+                let actionButtons = '';
+                if (currentUser.role === 'Admin') {
+                    actionButtons = `
+                        <button onclick="openApprovalModal(${originalIndex})" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Review Submission">
+                            <i class="fa-solid fa-gavel text-xs"></i>
+                            <span>Review</span>
+                        </button>
+                    `;
+                } else {
+                    if (inv.status === 'Pending Approval') {
+                        actionButtons = `
+                            <button onclick="deleteInvoice(${originalIndex})" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all inline-flex items-center justify-center" title="Delete Request">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        `;
+                    } else {
+                        actionButtons = `<span class="text-xs text-slate-400 italic">Locked</span>`;
+                    }
+                }
+
+                row.innerHTML = `
+                    <td class="py-4 px-6 font-mono font-bold text-indigo-600">${escapeHtml(inv.id)}</td>
+                    <td class="py-4 px-6 font-medium text-slate-700">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">${escapeHtml(inv.mrName.charAt(0))}</div>
+                            <span>${escapeHtml(inv.mrName)}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 font-semibold text-slate-800">${escapeHtml(inv.productName || 'N/A')}</td>
+                    <td class="py-4 px-6 font-bold text-indigo-600">${escapeHtml(inv.quantity || 1)}</td>
+                    <td class="py-4 px-6 font-medium text-slate-900">
+                        ${escapeHtml(inv.client)}
+                        ${inv.notes ? `<p class="text-[11px] text-slate-400 mt-0.5 truncate max-w-xs" title="${escapeHtml(inv.notes)}">Note: ${escapeHtml(inv.notes)}</p>` : ''}
+                    </td>
+                    <td class="py-4 px-6 text-slate-500 text-xs">${escapeHtml(inv.issueDate)}</td>
+                    <td class="py-4 px-6">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                            <span class="w-1.5 h-1.5 rounded-full mr-1.5 ${dotClass}"></span>
+                            ${escapeHtml(inv.status)}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-right">
+                        ${actionButtons}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function generateNextSampleInvNo() {
+            let maxNum = 0;
+            invoices.forEach(inv => {
+                const match = inv.id.match(/GRX-S-(\d+)/);
+                if (match && match[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) maxNum = num;
+                }
+            });
+            const nextNum = maxNum + 1;
+            return `GRX-S-${String(nextNum).padStart(4, '0')}`;
+        }
+
+        function openAddModal() {
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('formInvoiceId').value = generateNextSampleInvNo();
+            document.getElementById('formMrName').value = currentUser.name;
+            document.getElementById('formIssueDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('invoiceModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const newInvoice = {
+                id: document.getElementById('formInvoiceId').value.trim(),
+                mrName: currentUser.name,
+                productName: document.getElementById('formProductName').value.trim(),
+                quantity: parseInt(document.getElementById('formQuantity').value.trim(), 10) || 1,
+                client: document.getElementById('formClientName').value.trim(),
+                issueDate: document.getElementById('formIssueDate').value,
+                status: 'Pending Approval',
+                notes: ''
+            };
+
+            invoices.unshift(newInvoice);
+            saveToLocalStorage();
+            renderApp();
+            closeModal();
+        }
+
+        function openApprovalModal(index) {
+            const inv = invoices[index];
+            document.getElementById('approvalIndex').value = index;
+            document.getElementById('appModalId').textContent = inv.id;
+            document.getElementById('appModalDetails').textContent = `MR: ${inv.mrName} | Product: ${inv.productName} (Qty: ${inv.quantity}) | Client: ${inv.client}`;
+            document.getElementById('appModalNotes').value = inv.notes || '';
+            document.getElementById('approvalModal').classList.remove('hidden');
+        }
+
+        function closeApprovalModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+        }
+
+        function processApproval(newStatus) {
+            const index = document.getElementById('approvalIndex').value;
+            const notes = document.getElementById('appModalNotes').value.trim();
+
+            if (index !== '') {
+                invoices[index].status = newStatus;
+                invoices[index].notes = notes;
+                saveToLocalStorage();
+                renderApp();
+                closeApprovalModal();
+            }
+        }
+
+        function deleteInvoice(index) {
+            if (confirm('Are you sure you want to delete this pending request?')) {
+                invoices.splice(index, 1);
+                saveToLocalStorage();
+                renderApp();
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
