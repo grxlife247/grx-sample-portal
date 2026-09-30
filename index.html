@@ -95,7 +95,7 @@
                 </div>
                 <div>
                     <h3 id="roleBannerTitle" class="font-bold text-sm">Medical Representative Dashboard</h3>
-                    <p id="roleBannerDesc" class="text-xs opacity-80">You are viewing your private sample requests. Other MR submissions are strictly isolated.</p>
+                    <p id="roleBannerDesc" class="text-xs opacity-80">You are viewing your private sample requests. Real-time cloud sync is active.</p>
                 </div>
             </div>
             <div id="headerActionContainer">
@@ -106,7 +106,7 @@
         </div>
 
         <!-- Analytics Dashboard Summary Cards -->
-        <section id="metricsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <section id="metricsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <!-- Dynamic Cards Injected via JS -->
         </section>
 
@@ -131,7 +131,8 @@
                         <select id="statusFilter" onchange="renderApp()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="ALL">All Statuses</option>
                             <option value="Pending Approval">Pending Approval</option>
-                            <option value="Approved">Approved</option>
+                            <option value="Ready to Dispatch">Ready to Dispatch</option>
+                            <option value="Dispatched">Dispatched</option>
                             <option value="Rejected">Rejected</option>
                         </select>
                     </div>
@@ -216,7 +217,7 @@
 
     <!-- Admin Review Modal -->
     <div id="approvalModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden transform transition-all">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h3 id="approvalModalTitle" class="text-lg font-bold text-slate-900">Review Sample Request</h3>
                 <button onclick="closeApprovalModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
@@ -234,16 +235,15 @@
                     <p id="appModalDetails" class="text-sm text-slate-800 font-medium"></p>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Admin Notes / Rejection Reason</label>
-                    <textarea id="appModalNotes" rows="3" placeholder="Optional notes for approval or reason for rejection..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"></textarea>
+                    <p class="text-xs text-slate-500 font-medium">Current Status</p>
+                    <p id="appModalCurrentStatus" class="text-sm font-bold text-indigo-600"></p>
                 </div>
-                <div class="flex items-center justify-end space-x-3 pt-2">
-                    <button type="button" onclick="processApproval('Rejected')" class="flex-1 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-sm rounded-xl border border-rose-200 transition-all">
-                        <i class="fa-solid fa-xmark mr-1"></i> Reject
-                    </button>
-                    <button type="button" onclick="processApproval('Approved')" class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all">
-                        <i class="fa-solid fa-check mr-1"></i> Approve
-                    </button>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Admin / Dispatch Notes</label>
+                    <textarea id="appModalNotes" rows="2" placeholder="Optional notes or dispatch remarks..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"></textarea>
+                </div>
+                <div id="modalActionButtons" class="flex flex-wrap items-center justify-end gap-2 pt-2">
+                    <!-- Dynamic action buttons injected via JS -->
                 </div>
             </div>
         </div>
@@ -363,7 +363,7 @@
                 roleIconBg.className = 'w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center';
                 roleBannerIcon.className = 'fa-solid fa-shield-halved';
                 roleBannerTitle.textContent = 'Administrator Review Hub';
-                roleBannerDesc.textContent = 'Real-time sync active: Reviewing incoming requests across all Medical Representatives.';
+                roleBannerDesc.textContent = 'Real-time sync active: Reviewing incoming requests & handling dispatch stages.';
                 
                 headerActionContainer.innerHTML = `
                     <span class="inline-flex items-center px-3 py-2 bg-purple-100 text-purple-800 font-semibold text-xs rounded-xl">
@@ -381,7 +381,6 @@
                         invoices.push({ firebaseKey: key, ...data[key] });
                     });
                 }
-                // Sort descending so newest requests appear at top
                 invoices.reverse();
                 renderApp();
             });
@@ -415,75 +414,90 @@
             const container = document.getElementById('metricsContainer');
             const totalCount = scopedData.length;
             const pendingCount = scopedData.filter(i => i.status === 'Pending Approval').length;
-            const approvedCount = scopedData.filter(i => i.status === 'Approved').length;
+            const readyCount = scopedData.filter(i => i.status === 'Ready to Dispatch').length;
+            const dispatchedCount = scopedData.filter(i => i.status === 'Dispatched').length;
             const rejectedCount = scopedData.filter(i => i.status === 'Rejected').length;
 
             if (currentUser && currentUser.role === 'MR') {
                 container.innerHTML = `
-                    <div onclick="filterByCard('ALL')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-300 transition-all group">
+                    <div onclick="filterByCard('ALL')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500 group-hover:text-indigo-600">My Total Requests</p>
-                            <h3 class="text-2xl font-bold text-slate-900 mt-1">${totalCount}</h3>
+                            <p class="text-xs font-medium text-slate-500 group-hover:text-indigo-600">Total Requests</p>
+                            <h3 class="text-xl font-bold text-slate-900 mt-0.5">${totalCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-receipt"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-receipt"></i></div>
                     </div>
-                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 transition-all group">
+                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500 group-hover:text-amber-600">Pending Approval</p>
-                            <h3 class="text-2xl font-bold text-amber-600 mt-1">${pendingCount}</h3>
+                            <p class="text-xs font-medium text-slate-500 group-hover:text-amber-600">Pending</p>
+                            <h3 class="text-xl font-bold text-amber-600 mt-0.5">${pendingCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-clock-rotate-left"></i></div>
                     </div>
-                    <div onclick="filterByCard('Approved')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
+                    <div onclick="filterByCard('Ready to Dispatch')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-blue-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500 group-hover:text-emerald-600">Approved Samples</p>
-                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">${approvedCount}</h3>
+                            <p class="text-xs font-medium text-slate-500 group-hover:text-blue-600">Ready to Dispatch</p>
+                            <h3 class="text-xl font-bold text-blue-600 mt-0.5">${readyCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-box-open"></i></div>
                     </div>
-                    <div onclick="filterByCard('Rejected')" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
+                    <div onclick="filterByCard('Dispatched')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500 group-hover:text-rose-600">Declined Requests</p>
-                            <h3 class="text-2xl font-bold text-rose-600 mt-1">${rejectedCount}</h3>
+                            <p class="text-xs font-medium text-slate-500 group-hover:text-emerald-600">Dispatched</p>
+                            <h3 class="text-xl font-bold text-emerald-600 mt-0.5">${dispatchedCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-ban"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-truck-fast"></i></div>
+                    </div>
+                    <div onclick="filterByCard('Rejected')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 group-hover:text-rose-600">Declined</p>
+                            <h3 class="text-xl font-bold text-rose-600 mt-0.5">${rejectedCount}</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-ban"></i></div>
                     </div>
                 `;
                 document.getElementById('tableSectionTitle').textContent = 'My Sample Requests';
-                document.getElementById('tableSectionDesc').textContent = 'Showing only your personal requests. Other MR records are isolated.';
+                document.getElementById('tableSectionDesc').textContent = 'Showing only your personal requests.';
             } else {
                 container.innerHTML = `
-                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-6 rounded-2xl border border-purple-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-purple-50/40 transition-all group">
+                    <div onclick="filterByCard('Pending Approval')" class="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-amber-50/40 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-purple-900 font-semibold">Pending Review</p>
-                            <h3 class="text-2xl font-bold text-purple-600 mt-1">${pendingCount} Requests</h3>
+                            <p class="text-xs font-medium text-amber-900 font-semibold">Needs Approval</p>
+                            <h3 class="text-xl font-bold text-amber-600 mt-0.5">${pendingCount} Pending</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg"><i class="fa-solid fa-triangle-exclamation animate-pulse"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation animate-pulse"></i></div>
                     </div>
-                    <div onclick="filterByCard('Approved')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
+                    <div onclick="filterByCard('Ready to Dispatch')" class="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-blue-50/40 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500">Total Approved</p>
-                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">${approvedCount}</h3>
+                            <p class="text-xs font-medium text-blue-900 font-semibold">Ready to Dispatch</p>
+                            <h3 class="text-xl font-bold text-blue-600 mt-0.5">${readyCount} Items</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center"><i class="fa-solid fa-box-open"></i></div>
                     </div>
-                    <div onclick="filterByCard('Rejected')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
+                    <div onclick="filterByCard('Dispatched')" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500">Total Rejected</p>
-                            <h3 class="text-2xl font-bold text-rose-600 mt-1">${rejectedCount}</h3>
+                            <p class="text-xs font-medium text-slate-500">Total Dispatched</p>
+                            <h3 class="text-xl font-bold text-emerald-600 mt-0.5">${dispatchedCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-ban"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-truck-fast"></i></div>
                     </div>
-                    <div onclick="filterByCard('ALL')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-slate-400 transition-all group">
+                    <div onclick="filterByCard('Rejected')" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-300 transition-all group">
                         <div>
-                            <p class="text-sm font-medium text-slate-500">All MR Submissions</p>
-                            <h3 class="text-2xl font-bold text-slate-900 mt-1">${totalCount} Total</h3>
+                            <p class="text-xs font-medium text-slate-500">Total Rejected</p>
+                            <h3 class="text-xl font-bold text-rose-600 mt-0.5">${rejectedCount}</h3>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-lg"><i class="fa-solid fa-users"></i></div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-ban"></i></div>
+                    </div>
+                    <div onclick="filterByCard('ALL')" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-slate-400 transition-all group">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500">All Logs</p>
+                            <h3 class="text-xl font-bold text-slate-900 mt-0.5">${totalCount} Total</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="fa-solid fa-database"></i></div>
                     </div>
                 `;
-                document.getElementById('tableSectionTitle').textContent = 'All MR Submissions Queue';
-                document.getElementById('tableSectionDesc').textContent = 'Reviewing requests across all active Medical Representatives.';
+                document.getElementById('tableSectionTitle').textContent = 'Admin Management Queue';
+                document.getElementById('tableSectionDesc').textContent = 'Review requests, send to dispatch, or mark as dispatched.';
             }
         }
 
@@ -502,9 +516,12 @@
             data.forEach((inv) => {
                 let badgeClass = '';
                 let dotClass = '';
-                if (inv.status === 'Approved') {
+                if (inv.status === 'Dispatched') {
                     badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200/60';
                     dotClass = 'bg-emerald-500';
+                } else if (inv.status === 'Ready to Dispatch') {
+                    badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200/60';
+                    dotClass = 'bg-blue-500';
                 } else if (inv.status === 'Pending Approval') {
                     badgeClass = 'bg-amber-50 text-amber-700 border border-amber-200/60';
                     dotClass = 'bg-amber-500 animate-pulse';
@@ -518,12 +535,17 @@
                 
                 let actionButtons = '';
                 if (currentUser.role === 'Admin') {
-                    actionButtons = `
-                        <button onclick="openApprovalModal('${inv.firebaseKey}')" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Review Submission">
-                            <i class="fa-solid fa-gavel text-xs"></i>
-                            <span>Review</span>
-                        </button>
-                    `;
+                    if (inv.status === 'Dispatched' || inv.status === 'Rejected') {
+                        // Locked records cannot be changed by Admin once finalized/rejected
+                        actionButtons = `<span class="text-xs text-slate-400 italic">Locked (Completed)</span>`;
+                    } else {
+                        actionButtons = `
+                            <button onclick="openApprovalModal('${inv.firebaseKey}')" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Manage Workflow">
+                                <i class="fa-solid fa-gavel text-xs"></i>
+                                <span>Process</span>
+                            </button>
+                        `;
+                    }
                 } else {
                     if (inv.status === 'Pending Approval') {
                         actionButtons = `
@@ -532,7 +554,7 @@
                             </button>
                         `;
                     } else {
-                        actionButtons = `<span class="text-xs text-slate-400 italic">Locked</span>`;
+                        actionButtons = `<span class="text-xs text-slate-400 italic font-medium">Locked (${inv.status})</span>`;
                     }
                 }
 
@@ -603,7 +625,6 @@
                 notes: ''
             };
 
-            // Push directly to Firebase Realtime Database
             db.ref('invoices').push(newInvoice)
                 .then(() => {
                     closeModal();
@@ -619,7 +640,34 @@
             document.getElementById('approvalFirebaseKey').value = firebaseKey;
             document.getElementById('appModalId').textContent = inv.id;
             document.getElementById('appModalDetails').textContent = `MR: ${inv.mrName} | Product: ${inv.productName} (Qty: ${inv.quantity}) | Client: ${inv.client}`;
+            document.getElementById('appModalCurrentStatus').textContent = inv.status;
             document.getElementById('appModalNotes').value = inv.notes || '';
+
+            const actionContainer = document.getElementById('modalActionButtons');
+            actionContainer.innerHTML = '';
+
+            if (inv.status === 'Pending Approval') {
+                actionContainer.innerHTML = `
+                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Rejected')" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-all">
+                        <i class="fa-solid fa-xmark mr-1"></i> Reject
+                    </button>
+                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Ready to Dispatch')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-box-open mr-1"></i> Approve & Ready to Dispatch
+                    </button>
+                `;
+            } else if (inv.status === 'Ready to Dispatch') {
+                actionContainer.innerHTML = `
+                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Dispatched')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-truck-fast mr-1"></i> Mark as Dispatched (Finalize)
+                    </button>
+                `;
+            } else {
+                actionContainer.innerHTML = `
+                    <span class="text-xs text-slate-500 italic">This request is already finalized as <b>${inv.status}</b> and cannot be modified further.</span>
+                `;
+            }
+
+            document.getElementById('approvalModal').classList.add('hidden'); // Fix toggle reference
             document.getElementById('approvalModal').classList.remove('hidden');
         }
 
@@ -627,8 +675,7 @@
             document.getElementById('approvalModal').classList.add('hidden');
         }
 
-        function processApproval(newStatus) {
-            const firebaseKey = document.getElementById('approvalFirebaseKey').value;
+        function updateStatus(firebaseKey, newStatus) {
             const notes = document.getElementById('appModalNotes').value.trim();
 
             if (firebaseKey) {
