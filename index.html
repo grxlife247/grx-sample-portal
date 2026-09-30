@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -178,7 +181,7 @@
                 </button>
             </div>
             <form id="invoiceForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
-                <input type="hidden" id="editIndex">
+                <input type="hidden" id="editKey">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Sample Inv No</label>
                     <input type="text" id="formInvoiceId" required readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none font-mono text-slate-600 cursor-not-allowed">
@@ -221,7 +224,7 @@
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <input type="hidden" id="approvalIndex">
+                <input type="hidden" id="approvalFirebaseKey">
                 <div>
                     <p class="text-xs text-slate-500 font-medium">Sample Inv No</p>
                     <p id="appModalId" class="font-mono font-bold text-slate-900 text-base"></p>
@@ -247,6 +250,20 @@
     </div>
 
     <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBq59UUQUh7a5eRJD8rrLpT_ukJRfDiats",
+            authDomain: "grx-life-retail-nutrition.firebaseapp.com",
+            databaseURL: "https://grx-life-retail-nutrition-default-rtdb.firebaseio.com",
+            projectId: "grx-life-retail-nutrition",
+            storageBucket: "grx-life-retail-nutrition.firebasestorage.app",
+            messagingSenderId: "365874568577",
+            appId: "1:365874568577:web:668df4c01e0147983bdc80",
+            measurementId: "G-NFHLSG0B45"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         // Exact Credential Database mapping user IDs to passwords
         const validCredentials = {
             "Admin": "GRX-admin",
@@ -262,16 +279,10 @@
         };
 
         let currentUser = null;
-
-        // Fresh Start: Empty array so all counters start at 0
         let invoices = [];
 
-        function loadFromLocalStorage() {
-            const savedInvoices = localStorage.getItem('grx_nutrition_invoices_v4');
-            if (savedInvoices) {
-                try { invoices = JSON.parse(savedInvoices); } catch(e) { console.error(e); }
-            }
-            const savedUser = localStorage.getItem('grx_nutrition_session_v4');
+        window.onload = function() {
+            const savedUser = localStorage.getItem('grx_firebase_session_user');
             if (savedUser) {
                 try {
                     currentUser = JSON.parse(savedUser);
@@ -279,14 +290,6 @@
                     initAppSession();
                 } catch(e) { console.error(e); }
             }
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('grx_nutrition_invoices_v4', JSON.stringify(invoices));
-        }
-
-        window.onload = function() {
-            loadFromLocalStorage();
         };
 
         function handleLogin(event) {
@@ -306,13 +309,13 @@
                 role: role
             };
 
-            localStorage.setItem('grx_nutrition_session_v4', JSON.stringify(currentUser));
+            localStorage.setItem('grx_firebase_session_user', JSON.stringify(currentUser));
             document.getElementById('loginScreen').classList.add('hidden');
             initAppSession();
         }
 
         function logout() {
-            localStorage.removeItem('grx_nutrition_session_v4');
+            localStorage.removeItem('grx_firebase_session_user');
             currentUser = null;
             location.reload();
         }
@@ -343,7 +346,7 @@
                 roleIconBg.className = 'w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center';
                 roleBannerIcon.className = 'fa-solid fa-user-tie';
                 roleBannerTitle.textContent = `Welcome, ${currentUser.name} (MR Dashboard)`;
-                roleBannerDesc.textContent = 'You are viewing your private sample requests. Other MR submissions are strictly isolated.';
+                roleBannerDesc.textContent = 'You are viewing your private sample requests. Real-time cloud sync is active.';
                 
                 headerActionContainer.innerHTML = `
                     <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">
@@ -360,7 +363,7 @@
                 roleIconBg.className = 'w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center';
                 roleBannerIcon.className = 'fa-solid fa-shield-halved';
                 roleBannerTitle.textContent = 'Administrator Review Hub';
-                roleBannerDesc.textContent = 'Reviewing all incoming sample requests submitted across all active Medical Representatives.';
+                roleBannerDesc.textContent = 'Real-time sync active: Reviewing incoming requests across all Medical Representatives.';
                 
                 headerActionContainer.innerHTML = `
                     <span class="inline-flex items-center px-3 py-2 bg-purple-100 text-purple-800 font-semibold text-xs rounded-xl">
@@ -369,7 +372,19 @@
                 `;
             }
 
-            renderApp();
+            // Real-time listener from Firebase database
+            db.ref('invoices').on('value', (snapshot) => {
+                const data = snapshot.val();
+                invoices = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        invoices.push({ firebaseKey: key, ...data[key] });
+                    });
+                }
+                // Sort descending so newest requests appear at top
+                invoices.reverse();
+                renderApp();
+            });
         }
 
         function filterByCard(statusVal) {
@@ -485,8 +500,6 @@
             }
 
             data.forEach((inv) => {
-                const originalIndex = invoices.findIndex(item => item === inv);
-
                 let badgeClass = '';
                 let dotClass = '';
                 if (inv.status === 'Approved') {
@@ -506,7 +519,7 @@
                 let actionButtons = '';
                 if (currentUser.role === 'Admin') {
                     actionButtons = `
-                        <button onclick="openApprovalModal(${originalIndex})" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Review Submission">
+                        <button onclick="openApprovalModal('${inv.firebaseKey}')" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Review Submission">
                             <i class="fa-solid fa-gavel text-xs"></i>
                             <span>Review</span>
                         </button>
@@ -514,7 +527,7 @@
                 } else {
                     if (inv.status === 'Pending Approval') {
                         actionButtons = `
-                            <button onclick="deleteInvoice(${originalIndex})" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all inline-flex items-center justify-center" title="Delete Request">
+                            <button onclick="deleteInvoice('${inv.firebaseKey}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all inline-flex items-center justify-center" title="Delete Request">
                                 <i class="fa-solid fa-trash-can text-xs"></i>
                             </button>
                         `;
@@ -590,15 +603,20 @@
                 notes: ''
             };
 
-            invoices.unshift(newInvoice);
-            saveToLocalStorage();
-            renderApp();
-            closeModal();
+            // Push directly to Firebase Realtime Database
+            db.ref('invoices').push(newInvoice)
+                .then(() => {
+                    closeModal();
+                })
+                .catch((error) => {
+                    alert('Error submitting request: ' + error.message);
+                });
         }
 
-        function openApprovalModal(index) {
-            const inv = invoices[index];
-            document.getElementById('approvalIndex').value = index;
+        function openApprovalModal(firebaseKey) {
+            const inv = invoices.find(i => i.firebaseKey === firebaseKey);
+            if (!inv) return;
+            document.getElementById('approvalFirebaseKey').value = firebaseKey;
             document.getElementById('appModalId').textContent = inv.id;
             document.getElementById('appModalDetails').textContent = `MR: ${inv.mrName} | Product: ${inv.productName} (Qty: ${inv.quantity}) | Client: ${inv.client}`;
             document.getElementById('appModalNotes').value = inv.notes || '';
@@ -610,23 +628,27 @@
         }
 
         function processApproval(newStatus) {
-            const index = document.getElementById('approvalIndex').value;
+            const firebaseKey = document.getElementById('approvalFirebaseKey').value;
             const notes = document.getElementById('appModalNotes').value.trim();
 
-            if (index !== '') {
-                invoices[index].status = newStatus;
-                invoices[index].notes = notes;
-                saveToLocalStorage();
-                renderApp();
-                closeApprovalModal();
+            if (firebaseKey) {
+                db.ref('invoices/' + firebaseKey).update({
+                    status: newStatus,
+                    notes: notes
+                }).then(() => {
+                    closeApprovalModal();
+                }).catch((error) => {
+                    alert('Error updating status: ' + error.message);
+                });
             }
         }
 
-        function deleteInvoice(index) {
+        function deleteInvoice(firebaseKey) {
             if (confirm('Are you sure you want to delete this pending request?')) {
-                invoices.splice(index, 1);
-                saveToLocalStorage();
-                renderApp();
+                db.ref('invoices/' + firebaseKey).remove()
+                    .catch((error) => {
+                        alert('Error deleting: ' + error.message);
+                    });
             }
         }
 
