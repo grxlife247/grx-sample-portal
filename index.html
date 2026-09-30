@@ -99,9 +99,7 @@
                 </div>
             </div>
             <div id="headerActionContainer">
-                <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">
-                    <i class="fa-solid fa-plus mr-2"></i> New Sample Request
-                </button>
+                <!-- Injected via JS -->
             </div>
         </div>
 
@@ -114,8 +112,8 @@
         <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 id="tableSectionTitle" class="text-lg font-bold text-slate-900">My Sample Requests</h2>
-                    <p id="tableSectionDesc" class="text-sm text-slate-500">Submissions created under your account.</p>
+                    <h2 id="tableSectionTitle" class="text-lg font-bold text-slate-900">Sample Requests</h2>
+                    <p id="tableSectionDesc" class="text-sm text-slate-500">Submissions records.</p>
                 </div>
                 <!-- Filters & Search -->
                 <div class="flex flex-wrap items-center gap-3">
@@ -219,7 +217,7 @@
     <div id="approvalModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h3 id="approvalModalTitle" class="text-lg font-bold text-slate-900">Review Sample Request</h3>
+                <h3 id="approvalModalTitle" class="text-lg font-bold text-slate-900">Process Request</h3>
                 <button onclick="closeApprovalModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
@@ -264,10 +262,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Exact Credential Database mapping user IDs to passwords
+        // Credentials Database mapping user IDs to passwords
         const validCredentials = {
             "Admin": "GRX-admin",
-            "Saquib-GRX": "GRX-123456",
+            "Saquib-GRX": "GRX-123456", // Sub-Admin & MR
             "Sayed-GRX": "GRX-123456",
             "Aditya-GRX": "GRX-123456",
             "Ashu-GRX": "GRX-123456",
@@ -302,7 +300,9 @@
                 return;
             }
 
-            const role = (usernameInput === 'Admin') ? 'Admin' : 'MR';
+            let role = 'MR';
+            if (usernameInput === 'Admin') role = 'Admin';
+            if (usernameInput === 'Saquib-GRX') role = 'SubAdmin'; // Dual permission role
 
             currentUser = {
                 name: usernameInput,
@@ -336,7 +336,24 @@
             sessionNameDisplay.textContent = currentUser.name;
             sessionAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
 
-            if (currentUser.role === 'MR') {
+            if (currentUser.role === 'SubAdmin') {
+                sessionRoleDisplay.textContent = 'Sub-Admin & MR';
+                sessionRoleDisplay.className = 'text-[10px] text-blue-600 font-semibold uppercase tracking-wider';
+                headerLogoBg.className = 'bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-blue-100';
+                headerSubtitle.textContent = 'GRX Life Retail Nutrition Pvt Ltd';
+
+                roleBanner.className = 'p-4 rounded-2xl border flex items-center justify-between bg-blue-50 border-blue-100 text-blue-900';
+                roleIconBg.className = 'w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center';
+                roleBannerIcon.className = 'fa-solid fa-user-gear';
+                roleBannerTitle.textContent = `Welcome, ${currentUser.name} (Sub-Admin / MR Dashboard)`;
+                roleBannerDesc.textContent = 'You can raise new sample requests and mark "Ready to Dispatch" items as "Dispatched".';
+                
+                headerActionContainer.innerHTML = `
+                    <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-plus mr-2"></i> New Sample Request
+                    </button>
+                `;
+            } else if (currentUser.role === 'MR') {
                 sessionRoleDisplay.textContent = 'MR Account';
                 sessionRoleDisplay.className = 'text-[10px] text-indigo-600 font-semibold uppercase tracking-wider';
                 headerLogoBg.className = 'bg-indigo-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100';
@@ -363,11 +380,11 @@
                 roleIconBg.className = 'w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center';
                 roleBannerIcon.className = 'fa-solid fa-shield-halved';
                 roleBannerTitle.textContent = 'Administrator Review Hub';
-                roleBannerDesc.textContent = 'Real-time sync active: Reviewing incoming requests & handling dispatch stages.';
+                roleBannerDesc.textContent = 'Real-time sync active: Full access to review, approve, and dispatch all requests.';
                 
                 headerActionContainer.innerHTML = `
                     <span class="inline-flex items-center px-3 py-2 bg-purple-100 text-purple-800 font-semibold text-xs rounded-xl">
-                        <i class="fa-solid fa-lock-open mr-1.5"></i> All MR Records Visible
+                        <i class="fa-solid fa-lock-open mr-1.5"></i> Full Admin Access
                     </span>
                 `;
             }
@@ -395,18 +412,19 @@
             const query = document.getElementById('searchInput').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
 
-            let userScopedInvoices = invoices;
+            let visibleInvoices = invoices;
+            // Regular MRs only see their own requests. SubAdmin and Admin see all requests.
             if (currentUser && currentUser.role === 'MR') {
-                userScopedInvoices = invoices.filter(inv => inv.mrName.toLowerCase() === currentUser.name.toLowerCase());
+                visibleInvoices = invoices.filter(inv => inv.mrName.toLowerCase() === currentUser.name.toLowerCase());
             }
 
-            const filtered = userScopedInvoices.filter(inv => {
+            const filtered = visibleInvoices.filter(inv => {
                 const matchesQuery = inv.id.toLowerCase().includes(query) || inv.client.toLowerCase().includes(query) || inv.mrName.toLowerCase().includes(query) || (inv.productName && inv.productName.toLowerCase().includes(query));
                 const matchesStatus = (statusFilter === 'ALL' || inv.status === statusFilter);
                 return matchesQuery && matchesStatus;
             });
 
-            renderDashboardMetrics(userScopedInvoices);
+            renderDashboardMetrics(visibleInvoices);
             renderTable(filtered);
         }
 
@@ -496,8 +514,8 @@
                         <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="fa-solid fa-database"></i></div>
                     </div>
                 `;
-                document.getElementById('tableSectionTitle').textContent = 'Admin Management Queue';
-                document.getElementById('tableSectionDesc').textContent = 'Review requests, send to dispatch, or mark as dispatched.';
+                document.getElementById('tableSectionTitle').textContent = currentUser.role === 'SubAdmin' ? 'Dispatch Dashboard & All Requests' : 'Admin Management Queue';
+                document.getElementById('tableSectionDesc').textContent = currentUser.role === 'SubAdmin' ? 'Manage requests and mark "Ready to Dispatch" items as "Dispatched".' : 'Review requests, send to dispatch, or mark as dispatched.';
             }
         }
 
@@ -536,7 +554,6 @@
                 let actionButtons = '';
                 if (currentUser.role === 'Admin') {
                     if (inv.status === 'Dispatched' || inv.status === 'Rejected') {
-                        // Locked records cannot be changed by Admin once finalized/rejected
                         actionButtons = `<span class="text-xs text-slate-400 italic">Locked (Completed)</span>`;
                     } else {
                         actionButtons = `
@@ -545,6 +562,23 @@
                                 <span>Process</span>
                             </button>
                         `;
+                    }
+                } else if (currentUser.role === 'SubAdmin') {
+                    if (inv.status === 'Ready to Dispatch') {
+                        actionButtons = `
+                            <button onclick="openApprovalModal('${inv.firebaseKey}')" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all inline-flex items-center space-x-1 shadow-sm" title="Mark Dispatched">
+                                <i class="fa-solid fa-truck-fast text-xs"></i>
+                                <span>Dispatch</span>
+                            </button>
+                        `;
+                    } else if (inv.mrName.toLowerCase() === currentUser.name.toLowerCase() && inv.status === 'Pending Approval') {
+                        actionButtons = `
+                            <button onclick="deleteInvoice('${inv.firebaseKey}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all inline-flex items-center justify-center" title="Delete Request">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        `;
+                    } else {
+                        actionButtons = `<span class="text-xs text-slate-400 italic font-medium">${inv.status === 'Pending Approval' ? 'Pending Admin' : 'Locked'}</span>`;
                     }
                 } else {
                     if (inv.status === 'Pending Approval') {
@@ -646,28 +680,39 @@
             const actionContainer = document.getElementById('modalActionButtons');
             actionContainer.innerHTML = '';
 
-            if (inv.status === 'Pending Approval') {
-                actionContainer.innerHTML = `
-                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Rejected')" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-all">
-                        <i class="fa-solid fa-xmark mr-1"></i> Reject
-                    </button>
-                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Ready to Dispatch')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
-                        <i class="fa-solid fa-box-open mr-1"></i> Approve & Ready to Dispatch
-                    </button>
-                `;
-            } else if (inv.status === 'Ready to Dispatch') {
-                actionContainer.innerHTML = `
-                    <button type="button" onclick="updateStatus('${firebaseKey}', 'Dispatched')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
-                        <i class="fa-solid fa-truck-fast mr-1"></i> Mark as Dispatched (Finalize)
-                    </button>
-                `;
+            if (currentUser.role === 'SubAdmin') {
+                if (inv.status === 'Ready to Dispatch') {
+                    actionContainer.innerHTML = `
+                        <button type="button" onclick="updateStatus('${firebaseKey}', 'Dispatched')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
+                            <i class="fa-solid fa-truck-fast mr-1"></i> Mark as Dispatched
+                        </button>
+                    `;
+                } else {
+                    actionContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Sub-Admin can only mark "Ready to Dispatch" items as "Dispatched".</span>`;
+                }
             } else {
-                actionContainer.innerHTML = `
-                    <span class="text-xs text-slate-500 italic">This request is already finalized as <b>${inv.status}</b> and cannot be modified further.</span>
-                `;
+                if (inv.status === 'Pending Approval') {
+                    actionContainer.innerHTML = `
+                        <button type="button" onclick="updateStatus('${firebaseKey}', 'Rejected')" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-all">
+                            <i class="fa-solid fa-xmark mr-1"></i> Reject
+                        </button>
+                        <button type="button" onclick="updateStatus('${firebaseKey}', 'Ready to Dispatch')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
+                            <i class="fa-solid fa-box-open mr-1"></i> Approve & Ready to Dispatch
+                        </button>
+                    `;
+                } else if (inv.status === 'Ready to Dispatch') {
+                    actionContainer.innerHTML = `
+                        <button type="button" onclick="updateStatus('${firebaseKey}', 'Dispatched')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all">
+                            <i class="fa-solid fa-truck-fast mr-1"></i> Mark as Dispatched (Finalize)
+                        </button>
+                    `;
+                } else {
+                    actionContainer.innerHTML = `
+                        <span class="text-xs text-slate-500 italic">This request is finalized as <b>${inv.status}</b>.</span>
+                    `;
+                }
             }
 
-            document.getElementById('approvalModal').classList.add('hidden'); // Fix toggle reference
             document.getElementById('approvalModal').classList.remove('hidden');
         }
 
