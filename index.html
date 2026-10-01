@@ -276,11 +276,25 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Define user roles explicitly here (Options: 'Admin', 'SubAdmin', 'MR')
+        const userRoles = {
+            "Admin": "Admin",
+            "Ashu-GRX": "Admin",       // Full Admin Access
+            "Saquib-GRX": "SubAdmin",   // Sub-Admin & MR
+            "Sayed-GRX": "MR",
+            "Aditya-GRX": "MR",
+            "Adil-GRX": "MR",
+            "Sajjad-GRX": "MR",
+            "Raj Singh-GRX": "MR",
+            "Sourabh-GRX": "MR",
+            "Qasim-GRX": "MR"
+        };
+
         // Credentials Database mapping user IDs to passwords
         const validCredentials = {
             "Admin": "GRX-admin",
-            "Ashu-GRX": "GRX-123456",    // Full Admin Access
-            "Saquib-GRX": "GRX-123456", // Sub-Admin & MR
+            "Ashu-GRX": "GRX-123456",
+            "Saquib-GRX": "GRX-123456",
             "Sayed-GRX": "GRX-123456",
             "Aditya-GRX": "GRX-123456",
             "Adil-GRX": "GRX-123456",
@@ -314,12 +328,8 @@
                 return;
             }
 
-            let role = 'MR';
-            if (usernameInput === 'Admin' || usernameInput.toLowerCase() === 'ashu-grx') {
-                role = 'Admin'; // Full Admin Access for Admin & Ashu-GRX
-            } else if (usernameInput === 'Saquib-GRX') {
-                role = 'SubAdmin'; // Sub-Admin & MR
-            }
+            // Assign role dynamically from the userRoles configuration object
+            let role = userRoles[usernameInput] || 'MR';
 
             currentUser = {
                 name: usernameInput,
